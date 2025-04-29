@@ -49,7 +49,7 @@ resource "aws_eks_cluster" "eks" {
 
 # EKS NODE GROUP ROLE
 resource "aws_iam_role" "nodes_group" {
-  name = "eks-node-group"
+  name = "eks-nodes-group"
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
