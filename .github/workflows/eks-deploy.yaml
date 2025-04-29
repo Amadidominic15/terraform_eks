@@ -1,0 +1,87 @@
+name: EKS TERRAFORM DEPLOYMENT
+
+on:
+  push:
+    branches:
+     - "main"
+    paths:
+      - 'k8s/**'
+      - 'terraform/**'
+  workflow_dispatch:
+    inputs:
+       action:
+         description: "Specify the Terraform action: apply or destroy"
+         required: true
+         default: "apply"
+
+jobs:
+  eks_deployment_terraform:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_wrapper: true
+
+    - name: Initialize Terraform
+      run: |
+        terraform init
+
+    - name: Validate Terraform
+      run: |
+        terraform validate
+
+    - name: Terraform Plan
+      run: |
+        terraform plan
+
+    - name: Execute Terraform Action
+      run: |
+        if [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+          terraform destroy -auto-approve
+        else
+          terraform apply -auto-approve
+        fi
+
+  install_kubectl:
+    runs-on: ubuntu-latest
+    needs: eks_deployment_terraform
+
+    steps: 
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+
+  app_deployment:
+    runs-on: ubuntu-latest
+    needs: install_kubectl
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    - name: Configure kubectl
+      env:
+        KUBECONFIG: ${{ runner.temp }}/kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }} --kubeconfig $KUBECONFIG
+        echo "KUBECONFIG=$KUBECONFIG" >> $GITHUB_ENV
+        
+    - name: app deployment
+      run: |
+        kubectl apply -f k8s/app.yaml
+        kubectl apply -f k8s/service.yaml
+  
+
