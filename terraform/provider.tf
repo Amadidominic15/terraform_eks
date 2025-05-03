@@ -9,7 +9,7 @@ terraform {
     region          = "us-east-1"
     bucket          = "mytfbucket4282025"
     key             = "eks_cluster/terrafom.tfstate"
-    use_lockfile    = true
+    use_lockfile    = false
     }
 }
 
