@@ -12,7 +12,7 @@ on:
        action:
          description: "Specify the Terraform action: apply or destroy"
          required: true
-         default: "apply"
+         default: "destroy"
 
 jobs:
   eks_deployment_terraform:
